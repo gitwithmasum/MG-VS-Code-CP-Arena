@@ -1,0 +1,128 @@
+{
+  "name": "masum-galaxy-cp-arena",
+  "displayName": "Masum Galaxy // CP Arena",
+  "description": "A futuristic Competitive Programming arena for VS Code with contest sessions, local judging, multi-case runs, stress testing, snippets, templates, and AI coaching.",
+  "version": "1.0.0",
+  "publisher": "gitwithmasum",
+  "author": {
+    "name": "Masum Billah",
+    "url": "https://github.com/gitwithmasum"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "categories": [
+    "Other",
+    "Testing",
+    "Education"
+  ],
+  "keywords": [
+    "competitive programming",
+    "cp arena",
+    "codeforces",
+    "atcoder",
+    "leetcode",
+    "codechef",
+    "local judge",
+    "stress testing",
+    "test cases",
+    "contest timer",
+    "problem tracker",
+    "c++",
+    "python",
+    "javascript",
+    "snippets",
+    "templates",
+    "ai coach",
+    "complexity analysis",
+    "edge cases"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onView:masumGalaxyCpArena.sidebar",
+    "onCommand:masumGalaxyCpArena.open",
+    "onCommand:masumGalaxyCpArena.newContest",
+    "onCommand:masumGalaxyCpArena.newProblem",
+    "onCommand:masumGalaxyCpArena.stressTest",
+    "onCommand:masumGalaxyCpArena.snippets",
+    "onCommand:masumGalaxyCpArena.focusMode"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "masumGalaxyCpArena.open",
+        "title": "Masum Galaxy CP Arena: Open Arena"
+      },
+      {
+        "command": "masumGalaxyCpArena.newContest",
+        "title": "Masum Galaxy CP Arena: Start New Contest"
+      },
+      {
+        "command": "masumGalaxyCpArena.newProblem",
+        "title": "Masum Galaxy CP Arena: New Problem File"
+      },
+      {
+        "command": "masumGalaxyCpArena.stressTest",
+        "title": "Masum Galaxy CP Arena: Run Stress Test"
+      },
+      {
+        "command": "masumGalaxyCpArena.snippets",
+        "title": "Masum Galaxy CP Arena: Open Snippet Vault"
+      },
+      {
+        "command": "masumGalaxyCpArena.focusMode",
+        "title": "Masum Galaxy CP Arena: Toggle CP Focus Mode"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "masumGalaxyCpArena",
+          "title": "Galaxy CP Arena",
+          "icon": "media/cp-arena.svg"
+        }
+      ]
+    },
+    "views": {
+      "masumGalaxyCpArena": [
+        {
+          "type": "webview",
+          "id": "masumGalaxyCpArena.sidebar",
+          "name": "CP Arena"
+        }
+      ]
+    }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "CP Arena compiles and runs source files from the current workspace."
+    }
+  },
+  "scripts": {
+    "check": "node --check extension.js && node --check src/arena.js && node --check src/core/workspace.js && node --check src/features/cp-core.js && node --check src/features/cp.js && node --check test/cp-core.test.js",
+    "test": "node --test test/*.test.js",
+    "vscode:prepublish": "npm run check && npm test",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gitwithmasum/MG-VS-Code-CP-Arena.git"
+  },
+  "homepage": "https://github.com/gitwithmasum/MG-VS-Code-CP-Arena#readme",
+  "bugs": {
+    "url": "https://github.com/gitwithmasum/MG-VS-Code-CP-Arena/issues"
+  },
+  "galleryBanner": {
+    "color": "#050817",
+    "theme": "dark"
+  },
+  "pricing": "Free"
+}
