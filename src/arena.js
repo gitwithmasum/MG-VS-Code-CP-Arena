@@ -858,8 +858,8 @@ class CpArenaProvider {
     return '<!DOCTYPE html>' +
       '<html><head><meta charset="UTF-8">' +
       '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
-      '<meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src ' +
-      webview.cspSource + ' \\'unsafe-inline\\'; script-src \\'nonce-' + n + '\\';">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src ' +
+      webview.cspSource + ' \'unsafe-inline\'; script-src \'nonce-' + n + '\';">' +
       '<style>' +
       ':root{--cyan:#00f7ff;--violet:#8b5cff;--pink:#ff4fd8;--ok:#64ffb4;--warn:#ffcc66;--fail:#ff6b8a;--muted:var(--vscode-descriptionForeground);--panel:color-mix(in srgb,var(--vscode-editor-background) 92%,#050817 8%)}' +
       '*{box-sizing:border-box}body{margin:0;padding:12px;font-family:var(--vscode-font-family);color:var(--vscode-foreground);background:var(--vscode-sideBar-background)}' +
@@ -873,7 +873,7 @@ class CpArenaProvider {
       '</style></head><body>' +
       '<div class="brand">MASUM GALAXY // CP ARENA</div>' +
       '<section class="hero"><h2>Contest cockpit · local judge · AI coach</h2>' +
-      '<div class="muted">C/C++, Python, and JavaScript. Contest/problem history stays in this extension\\'s VS Code storage.</div>' +
+      '<div class="muted">C/C++, Python, and JavaScript. Contest/problem history stays in this extension\'s VS Code storage.</div>' +
       '<div class="actions"><button data-command="cpStartContest">▶ New Contest</button><button data-command="cpStopContest">■ Stop</button><button data-command="cpFocusMode">◎ CP Focus</button><button data-command="cpResetArena">↺ Reset</button><button data-command="refresh">Refresh</button></div></section>' +
       '<div class="summary">' +
       '<div class="stat"><span>CONTEST</span><strong class="clock" id="contestClock" data-running="' +
