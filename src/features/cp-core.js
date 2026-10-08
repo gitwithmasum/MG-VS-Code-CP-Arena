@@ -27,8 +27,8 @@ function splitCases(value) {
     .replace(/[\u2028\u2029]/g, '\n');
 
   // Some clipboard/webview paths can preserve "\\n" as literal text.
-  if (!text.includes('\n') && /\\\\n/.test(text)) {
-    text = text.replace(/\\\\n/g, '\n');
+  if (!text.includes('\n') && /\\n/.test(text)) {
+    text = text.replace(/\\n/g, '\n');
   }
 
   text = text.trim();
