@@ -159,13 +159,41 @@ function renderHistory(history) {
   }).join('');
 }
 
+function formatMemory(kb) {
+  const value = Number(kb || 0);
+  if (!value) return 'memory n/a';
+  if (value < 1024) return Math.round(value) + ' KB';
+  return (value / 1024).toFixed(1) + ' MB';
+}
+
+function renderDiff(diff) {
+  if (!diff) return '';
+  return '<div class="diff">' +
+    '<div><strong>First mismatch</strong> · token ' +
+    Number(diff.tokenIndex || 0) + ' · line ' +
+    Number(diff.lineIndex || 0) + '</div>' +
+    '<div class="diff-grid"><span>Expected</span><code>' +
+    escapeHtml(diff.expectedToken || '[missing]') +
+    '</code><span>Actual</span><code>' +
+    escapeHtml(diff.actualToken || '[missing]') +
+    '</code></div>' +
+    '<div class="section-title">EXPECTED LINE</div><pre>' +
+    escapeHtml(diff.expectedLine || '[missing]') + '</pre>' +
+    '<div class="section-title">ACTUAL LINE</div><pre>' +
+    escapeHtml(diff.actualLine || '[missing]') + '</pre>' +
+    '</div>';
+}
+
 function renderSuite(suite) {
   if (!suite || !suite.cases || !suite.cases.length) return '';
   return suite.cases.map((item) =>
-    '<div class="history-row"><div><strong>Case ' + item.index + ' · ' +
-    escapeHtml(item.verdict) + '</strong><small>' +
-    Number(item.runtimeMs || 0) + ' ms</small></div><span>' +
-    (item.verdict === 'PASS' ? '✓' : '×') + '</span></div>'
+    '<div class="suite-case"><div class="history-row"><div><strong>Case ' +
+    item.index + ' · ' + escapeHtml(item.verdict) + '</strong><small>' +
+    Number(item.runtimeMs || 0) + ' ms · ' +
+    escapeHtml(formatMemory(item.peakMemoryKb)) +
+    '</small></div><span>' +
+    (item.verdict === 'PASS' ? '✓' : '×') + '</span></div>' +
+    renderDiff(item.diff) + '</div>'
   ).join('');
 }
 
@@ -305,6 +333,12 @@ class CpArenaProvider {
       case 'cpRunMulti':
         await this.runMulti(value);
         break;
+      case 'cpRunLastSample':
+        await this.runLastSample();
+        break;
+      case 'cpRunLastMulti':
+        await this.runLastMulti();
+        break;
       case 'cpStressTest':
         await this.runStress();
         break;
@@ -325,6 +359,16 @@ class CpArenaProvider {
         break;
       case 'cpFocusMode':
         await this.toggleFocusMode();
+        break;
+      case 'cpMarkAccepted':
+        await setProblemStatus(this.context, 'AC');
+        vscode.window.showInformationMessage('Galaxy CP: current problem marked AC.');
+        break;
+      case 'cpNextProblem':
+        await this.nextProblem();
+        break;
+      case 'cpRerunStressFailure':
+        await this.rerunStressFailure();
         break;
       case 'cpPlatform':
         await this.openPlatform(value);
@@ -472,6 +516,87 @@ class CpArenaProvider {
       );
     }
 
+    return true;
+  }
+
+  async runLastSample() {
+    const state = getCpArenaState(this.context);
+    if (!state.lastRun) {
+      vscode.window.showInformationMessage('Run a sample once before using the sample shortcut.');
+      return false;
+    }
+    return this.runSample({
+      input: state.lastRun.input || '',
+      expected: state.lastRun.expected || ''
+    });
+  }
+
+  async runLastMulti() {
+    const state = getCpArenaState(this.context);
+    if (!state.lastSuite?.rawInput) {
+      vscode.window.showInformationMessage('Run multi-case judge once before using the multi-case shortcut.');
+      return false;
+    }
+    return this.runMulti({
+      input: state.lastSuite.rawInput,
+      expected: state.lastSuite.rawExpected || ''
+    });
+  }
+
+  async nextProblem() {
+    const state = getCpArenaState(this.context);
+    const labels = (state.problems || []).map((item) => item.label);
+    const currentIndex = labels.indexOf(state.currentProblem);
+    const next = labels[currentIndex + 1];
+
+    if (!next) {
+      vscode.window.showInformationMessage('Galaxy CP: already on the last problem.');
+      return false;
+    }
+
+    await switchProblem(this.context, next);
+    vscode.window.showInformationMessage('Galaxy CP: switched to Problem ' + next + '.');
+    return true;
+  }
+
+  async rerunStressFailure() {
+    const state = getCpArenaState(this.context);
+    const failure = state.lastStress;
+
+    if (!failure?.input) {
+      vscode.window.showInformationMessage('No saved failing stress-test input is available.');
+      return false;
+    }
+
+    const document = await this.getSourceDocument();
+    if (!document) {
+      vscode.window.showInformationMessage('Open the optimized solution first.');
+      return false;
+    }
+
+    if (document.isDirty && !(await document.save())) {
+      vscode.window.showWarningMessage('Save the optimized solution before re-running the failed case.');
+      return false;
+    }
+
+    const run = await runCurrentFile(
+      document,
+      failure.input,
+      failure.bruteOutput || ''
+    );
+
+    run.input = failure.input;
+    await saveLastRun(this.context, run);
+
+    const message =
+      'Galaxy CP reproduce: ' + run.verdict + ' · ' +
+      run.runtimeMs + ' ms · ' + formatMemory(run.peakMemoryKb);
+
+    if (run.verdict === 'PASS') {
+      vscode.window.showInformationMessage(message);
+    } else {
+      vscode.window.showWarningMessage(message);
+    }
     return true;
   }
 
@@ -851,10 +976,16 @@ class CpArenaProvider {
     const lastRun = state.lastRun
       ? '<div class="result"><div class="result-head"><strong>' +
         escapeHtml(state.lastRun.verdict) + '</strong> · ' +
-        Number(state.lastRun.runtimeMs || 0) + ' ms · Problem ' +
+        Number(state.lastRun.runtimeMs || 0) + ' ms · ' +
+        escapeHtml(formatMemory(state.lastRun.peakMemoryKb)) + ' · Problem ' +
         escapeHtml(state.lastRun.problem || state.currentProblem) +
         '</div><div class="section-title">ACTUAL OUTPUT</div><pre>' +
         escapeHtml(state.lastRun.stdout || '[no stdout]') + '</pre>' +
+        (state.lastRun.expected
+          ? '<div class="section-title">EXPECTED OUTPUT</div><pre>' +
+            escapeHtml(state.lastRun.expected) + '</pre>'
+          : '') +
+        renderDiff(state.lastRun.diff) +
         (state.lastRun.stderr
           ? '<div class="section-title">STDERR</div><pre>' +
             escapeHtml(state.lastRun.stderr) + '</pre>'
@@ -894,6 +1025,19 @@ class CpArenaProvider {
           ? '<div class="section-title">OPTIMIZED OUTPUT</div><pre>' +
             escapeHtml(state.lastStress.optimizedOutput) + '</pre>'
           : '') +
+        (state.lastStress.bruteRuntimeMs || state.lastStress.optimizedRuntimeMs
+          ? '<div class="muted">Brute: ' +
+            Number(state.lastStress.bruteRuntimeMs || 0) + ' ms · ' +
+            escapeHtml(formatMemory(state.lastStress.bruteMemoryKb)) +
+            ' · Optimized: ' +
+            Number(state.lastStress.optimizedRuntimeMs || 0) + ' ms · ' +
+            escapeHtml(formatMemory(state.lastStress.optimizedMemoryKb)) +
+            '</div>'
+          : '') +
+        renderDiff(state.lastStress.diff) +
+        (state.lastStress.input
+          ? '<div class="tools"><button data-command="cpRerunStressFailure">↻ Re-run Failed Case</button></div>'
+          : '') +
         (state.lastStress.error
           ? '<pre>' + escapeHtml(state.lastStress.error) + '</pre>'
           : '') +
@@ -924,7 +1068,7 @@ class CpArenaProvider {
       '.summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.stat{padding:10px;border:1px solid rgba(0,247,255,.12);border-radius:10px;background:var(--panel)}.stat span{display:block;font-size:9px;letter-spacing:.11em;color:var(--muted);margin-bottom:5px}.stat strong{font-size:14px}.clock{font-family:var(--vscode-editor-font-family);color:var(--cyan)}' +
       '.section-title{font-size:9px;letter-spacing:.12em;color:var(--muted);margin:10px 0 7px}.section-title.top{margin-top:14px}.problems{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.problem{display:flex;flex-direction:column;gap:3px;text-align:left;background:transparent;color:var(--vscode-foreground);min-width:0}.problem.active{border-color:var(--cyan);background:rgba(0,247,255,.07)}.problem.cp-ac{border-color:rgba(100,255,180,.5)}.problem.cp-fail{border-color:rgba(255,107,138,.5)}.problem.cp-solving{border-color:rgba(255,204,102,.5)}.letter{font-size:16px;font-weight:800;color:var(--cyan)}.problem small{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.runner{display:grid;grid-template-columns:1fr;gap:8px}.run-panel{padding:9px;border:1px solid rgba(139,92,255,.15);border-radius:10px;background:var(--panel)}textarea{width:100%;min-height:110px;margin-top:7px;resize:vertical;background:var(--vscode-input-background);color:var(--vscode-input-foreground);border:1px solid var(--vscode-input-border,rgba(0,247,255,.15));border-radius:8px;padding:8px;font-family:var(--vscode-editor-font-family)}' +
-      '.result,.ai-result{margin-top:10px;padding:10px;border:1px solid rgba(0,247,255,.13);border-radius:10px;background:var(--panel)}.ai-result{border-color:rgba(255,79,216,.18);white-space:pre-wrap;line-height:1.5}.model{margin-top:8px;color:var(--muted);font-size:10px}.result-head{font-size:11px}pre{white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;background:rgba(0,0,0,.15);padding:8px;border-radius:8px;font-family:var(--vscode-editor-font-family);font-size:11px}.history{display:flex;flex-direction:column;gap:6px}.history-row{display:flex;justify-content:space-between;gap:8px;padding:8px;border:1px solid rgba(0,247,255,.1);border-radius:8px}.history-row div{min-width:0}.history-row strong,.history-row small{display:block}.history-row small{color:var(--muted);margin-top:2px}' +
+      '.result,.ai-result{margin-top:10px;padding:10px;border:1px solid rgba(0,247,255,.13);border-radius:10px;background:var(--panel)}.ai-result{border-color:rgba(255,79,216,.18);white-space:pre-wrap;line-height:1.5}.model{margin-top:8px;color:var(--muted);font-size:10px}.result-head{font-size:11px}pre{white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;background:rgba(0,0,0,.15);padding:8px;border-radius:8px;font-family:var(--vscode-editor-font-family);font-size:11px}.history{display:flex;flex-direction:column;gap:6px}.history-row{display:flex;justify-content:space-between;gap:8px;padding:8px;border:1px solid rgba(0,247,255,.1);border-radius:8px}.history-row div{min-width:0}.history-row strong,.history-row small{display:block}.history-row small{color:var(--muted);margin-top:2px}.suite-case{display:flex;flex-direction:column;gap:5px}.diff{margin-top:7px;padding:8px;border:1px solid rgba(255,107,138,.25);border-radius:8px;background:rgba(255,107,138,.04);font-size:11px}.diff-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 8px;margin-top:7px}.diff code{font-family:var(--vscode-editor-font-family);color:var(--warn)}' +
       '@media(min-width:520px){.summary{grid-template-columns:repeat(5,minmax(0,1fr))}.problems{grid-template-columns:repeat(8,minmax(0,1fr))}.runner{grid-template-columns:repeat(2,minmax(0,1fr))}}' +
       '</style></head><body>' +
       '<div class="brand">MASUM GALAXY // CP ARENA</div>' +
