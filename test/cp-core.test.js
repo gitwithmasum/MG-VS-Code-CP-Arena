@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   normalizeOutput,
   verdictFromResult,
+  buildOutputDiff,
   splitCases,
   statusFromVerdict
 } = require('../src/features/cp-core');
@@ -31,6 +32,23 @@ test('CP verdict mapping handles pass, WA, TLE, and runtime errors', () => {
     verdictFromResult({ exitCode: 1, timedOut: false, stdout: '' }, ''),
     'RUNTIME ERROR'
   );
+});
+
+test('output diff reports the first mismatching token and line', () => {
+  assert.deepEqual(
+    buildOutputDiff('12 7 9\n20', '12 8 9\n20'),
+    {
+      tokenIndex: 2,
+      lineIndex: 1,
+      expectedToken: '7',
+      actualToken: '8',
+      expectedLine: '12 7 9',
+      actualLine: '12 8 9',
+      expectedTokens: 4,
+      actualTokens: 4
+    }
+  );
+  assert.equal(buildOutputDiff('42\n', '42'), null);
 });
 
 test('multi-case parser splits on separator-only lines', () => {
