@@ -350,6 +350,28 @@ function runProcessWithInput(command, args, cwd, input, timeoutMs = 5000) {
   });
 }
 
+function resolveNativeCompiler(language) {
+  const isC = language === 'c';
+  const executable = isC ? 'gcc' : 'g++';
+
+  if (process.platform !== 'win32') return executable;
+
+  const configured = process.env[
+    isC ? 'GALAXY_CP_GCC' : 'GALAXY_CP_GPP'
+  ];
+  if (configured && fs.existsSync(configured)) return configured;
+
+  const filename = executable + '.exe';
+  const candidates = [
+    path.join('C:\\msys64\\ucrt64\\bin', filename),
+    path.join('C:\\msys64\\mingw64\\bin', filename),
+    path.join('C:\\mingw64\\bin', filename),
+    path.join('C:\\MinGW\\bin', filename)
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || executable;
+}
+
 async function compileNative(filePath, language) {
   const tempBase = path.join(
     os.tmpdir(),
@@ -360,15 +382,28 @@ async function compileNative(filePath, language) {
     : tempBase;
 
   const isC = language === 'c';
-  const compiler = isC ? 'gcc' : 'g++';
+  const compiler = resolveNativeCompiler(language);
   const standard = isC ? '-std=c17' : '-std=c++17';
+  const args = [filePath, standard, '-O2'];
+
+  // MSYS2/MinGW can be noticeably slower on the first Windows compile.
+  // Avoid -pipe there and give antivirus/OneDrive-backed projects enough time.
+  if (process.platform !== 'win32') {
+    args.push('-pipe');
+  }
+
+  if (process.platform === 'win32' && !isC) {
+    args.push('-static-libgcc', '-static-libstdc++');
+  }
+
+  args.push('-o', outputPath);
 
   const result = await runProcessWithInput(
     compiler,
-    [filePath, standard, '-O2', '-pipe', '-o', outputPath],
+    args,
     path.dirname(filePath),
     '',
-    20000
+    60000
   );
 
   return { ...result, outputPath, compiler };
