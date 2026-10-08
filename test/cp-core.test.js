@@ -41,6 +41,21 @@ test('multi-case parser splits on separator-only lines', () => {
   assert.deepEqual(splitCases(''), ['']);
 });
 
+test('multi-case parser tolerates clipboard and unicode separators', () => {
+  assert.deepEqual(
+    splitCases('1 2\\n---\\n5 7\\n---\\n10 20'),
+    ['1 2', '5 7', '10 20']
+  );
+  assert.deepEqual(
+    splitCases('1 2\n———\n5 7\n———\n10 20'),
+    ['1 2', '5 7', '10 20']
+  );
+  assert.deepEqual(
+    splitCases('1 2 --- 5 7 --- 10 20'),
+    ['1 2', '5 7', '10 20']
+  );
+});
+
 test('judge verdicts map to tracker states without auto-AC', () => {
   assert.equal(statusFromVerdict('WRONG ANSWER'), 'WA');
   assert.equal(statusFromVerdict('MISMATCH'), 'WA');
