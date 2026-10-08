@@ -451,11 +451,36 @@ class CpArenaProvider {
   }
 
   async createProblemFile() {
-    const root = getWorkspaceRoot();
+    let root = getWorkspaceRoot();
+
     if (!root) {
-      vscode.window.showInformationMessage('Open a workspace folder first.');
-      return false;
+      const editor = vscode.window.activeTextEditor;
+      if (editor && editor.document.uri.scheme === 'file') {
+        root = path.dirname(editor.document.uri.fsPath);
+      }
     }
+
+    if (!root && this.lastSourceUri) {
+      try {
+        const sourceUri = vscode.Uri.parse(this.lastSourceUri);
+        if (sourceUri.scheme === 'file') {
+          root = path.dirname(sourceUri.fsPath);
+        }
+      } catch {}
+    }
+
+    if (!root) {
+      const folders = await vscode.window.showOpenDialog({
+        title: 'Choose a folder for the new CP problem file',
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: 'Use This Folder'
+      });
+      root = folders && folders[0] ? folders[0].fsPath : '';
+    }
+
+    if (!root) return false;
 
     const language = await vscode.window.showQuickPick(
       [
