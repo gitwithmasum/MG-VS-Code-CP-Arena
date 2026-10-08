@@ -49,7 +49,12 @@
     "onCommand:masumGalaxyCpArena.newProblem",
     "onCommand:masumGalaxyCpArena.stressTest",
     "onCommand:masumGalaxyCpArena.snippets",
-    "onCommand:masumGalaxyCpArena.focusMode"
+    "onCommand:masumGalaxyCpArena.focusMode",
+    "onCommand:masumGalaxyCpArena.runLastSample",
+    "onCommand:masumGalaxyCpArena.runLastMulti",
+    "onCommand:masumGalaxyCpArena.markAccepted",
+    "onCommand:masumGalaxyCpArena.nextProblem",
+    "onCommand:masumGalaxyCpArena.rerunStressFailure"
   ],
   "contributes": {
     "commands": [
@@ -76,6 +81,26 @@
       {
         "command": "masumGalaxyCpArena.focusMode",
         "title": "Masum Galaxy CP Arena: Toggle CP Focus Mode"
+      },
+      {
+        "command": "masumGalaxyCpArena.runLastSample",
+        "title": "Masum Galaxy CP Arena: Run Last Sample"
+      },
+      {
+        "command": "masumGalaxyCpArena.runLastMulti",
+        "title": "Masum Galaxy CP Arena: Run Last Multi Cases"
+      },
+      {
+        "command": "masumGalaxyCpArena.markAccepted",
+        "title": "Masum Galaxy CP Arena: Mark Current Problem AC"
+      },
+      {
+        "command": "masumGalaxyCpArena.nextProblem",
+        "title": "Masum Galaxy CP Arena: Switch to Next Problem"
+      },
+      {
+        "command": "masumGalaxyCpArena.rerunStressFailure",
+        "title": "Masum Galaxy CP Arena: Re-run Last Stress Failure"
       }
     ],
     "viewsContainers": {
@@ -95,7 +120,38 @@
           "name": "CP Arena"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "masumGalaxyCpArena.runLastSample",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c || editorLangId == python || editorLangId == javascript)"
+      },
+      {
+        "command": "masumGalaxyCpArena.runLastMulti",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c || editorLangId == python || editorLangId == javascript)"
+      },
+      {
+        "command": "masumGalaxyCpArena.stressTest",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c || editorLangId == python || editorLangId == javascript)"
+      },
+      {
+        "command": "masumGalaxyCpArena.markAccepted",
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "masumGalaxyCpArena.nextProblem",
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n"
+      }
+    ]
   },
   "capabilities": {
     "untrustedWorkspaces": {
