@@ -30,6 +30,21 @@ function activate(context) {
     ),
     vscode.commands.registerCommand('masumGalaxyCpArena.focusMode', () =>
       provider.execute('cpFocusMode')
+    ),
+    vscode.commands.registerCommand('masumGalaxyCpArena.runLastSample', () =>
+      provider.execute('cpRunLastSample')
+    ),
+    vscode.commands.registerCommand('masumGalaxyCpArena.runLastMulti', () =>
+      provider.execute('cpRunLastMulti')
+    ),
+    vscode.commands.registerCommand('masumGalaxyCpArena.markAccepted', () =>
+      provider.execute('cpMarkAccepted')
+    ),
+    vscode.commands.registerCommand('masumGalaxyCpArena.nextProblem', () =>
+      provider.execute('cpNextProblem')
+    ),
+    vscode.commands.registerCommand('masumGalaxyCpArena.rerunStressFailure', () =>
+      provider.execute('cpRerunStressFailure')
     )
   );
 
