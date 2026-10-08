@@ -21,6 +21,47 @@ function verdictFromResult(result, expectedOutput = '') {
   return 'PASS';
 }
 
+function buildOutputDiff(expectedOutput, actualOutput) {
+  const expected = normalizeOutput(expectedOutput);
+  const actual = normalizeOutput(actualOutput);
+  if (expected === actual) return null;
+
+  const expectedTokens = expected.split(/\s+/).filter(Boolean);
+  const actualTokens = actual.split(/\s+/).filter(Boolean);
+  const max = Math.max(expectedTokens.length, actualTokens.length);
+  let tokenIndex = 0;
+
+  while (
+    tokenIndex < max &&
+    expectedTokens[tokenIndex] === actualTokens[tokenIndex]
+  ) {
+    tokenIndex += 1;
+  }
+
+  const expectedLines = expected.split('\n');
+  const actualLines = actual.split('\n');
+  const lineMax = Math.max(expectedLines.length, actualLines.length);
+  let lineIndex = 0;
+
+  while (
+    lineIndex < lineMax &&
+    expectedLines[lineIndex] === actualLines[lineIndex]
+  ) {
+    lineIndex += 1;
+  }
+
+  return {
+    tokenIndex: tokenIndex + 1,
+    lineIndex: lineIndex + 1,
+    expectedToken: expectedTokens[tokenIndex] ?? '[missing]',
+    actualToken: actualTokens[tokenIndex] ?? '[missing]',
+    expectedLine: expectedLines[lineIndex] ?? '[missing]',
+    actualLine: actualLines[lineIndex] ?? '[missing]',
+    expectedTokens: expectedTokens.length,
+    actualTokens: actualTokens.length
+  };
+}
+
 function splitCases(value) {
   let text = String(value || '')
     .replace(/\r\n?/g, '\n')
@@ -78,6 +119,7 @@ function statusFromVerdict(verdict) {
 module.exports = {
   normalizeOutput,
   verdictFromResult,
+  buildOutputDiff,
   splitCases,
   statusFromVerdict
 };
