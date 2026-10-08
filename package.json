@@ -1,7 +1,7 @@
 {
   "name": "masum-galaxy-cp-arena",
   "displayName": "Masum Galaxy // CP Arena",
-  "description": "A futuristic Competitive Programming arena for VS Code with contest sessions, local judging, multi-case runs, stress testing, snippets, templates, and AI coaching.",
+  "description": "A competitive programming cockpit for VS Code with local judging, verdict diffs, benchmarks, stress testing, contest tools, snippets, and AI coaching.",
   "version": "1.0.0",
   "publisher": "gitwithmasum",
   "author": {
@@ -23,13 +23,21 @@
   "keywords": [
     "competitive programming",
     "cp arena",
+    "competitive coding",
+    "cp toolkit",
     "codeforces",
     "atcoder",
     "leetcode",
     "codechef",
     "local judge",
+    "online judge",
     "stress testing",
+    "stress tester",
     "test cases",
+    "verdict diff",
+    "wrong answer",
+    "runtime benchmark",
+    "memory benchmark",
     "contest timer",
     "problem tracker",
     "c++",
@@ -39,7 +47,10 @@
     "templates",
     "ai coach",
     "complexity analysis",
-    "edge cases"
+    "edge cases",
+    "problem solving",
+    "coding contest",
+    "developer tools"
   ],
   "main": "./extension.js",
   "activationEvents": [
@@ -160,7 +171,7 @@
     }
   },
   "scripts": {
-    "check": "node --check extension.js && node --check src/arena.js && node --check src/core/workspace.js && node --check src/features/cp-core.js && node --check src/features/cp.js && node --check test/cp-core.test.js",
+    "check": "node --check extension.js && node --check src/arena.js && node --check src/core/workspace.js && node --check src/features/cp-core.js && node --check src/features/cp.js && node --check test/cp-core.test.js && node --check test/marketplace.test.js",
     "test": "node --test test/*.test.js",
     "vscode:prepublish": "npm run check && npm test",
     "package": "vsce package"
@@ -180,5 +191,6 @@
     "color": "#050817",
     "theme": "dark"
   },
-  "pricing": "Free"
+  "pricing": "Free",
+  "icon": "media/cp-arena-icon.png"
 }
