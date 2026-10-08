@@ -7,6 +7,7 @@ const { getWorkspaceRoot } = require('../core/workspace');
 const {
   normalizeOutput,
   verdictFromResult,
+  buildOutputDiff,
   splitCases,
   statusFromVerdict
 } = require('./cp-core');
@@ -267,12 +268,69 @@ async function resetCpSession(context) {
   await saveSession(context, defaultSession());
 }
 
+async function readProcessRssKb(pid) {
+  if (!pid || pid <= 0) return 0;
+
+  if (process.platform === 'linux') {
+    try {
+      const status = fs.readFileSync('/proc/' + pid + '/status', 'utf8');
+      const match = status.match(/^VmRSS:\s+(\d+)\s+kB$/m);
+      return match ? Number(match[1]) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  const command = process.platform === 'win32' ? 'tasklist' : 'ps';
+  const args = process.platform === 'win32'
+    ? ['/FI', 'PID eq ' + pid, '/FO', 'CSV', '/NH']
+    : ['-o', 'rss=', '-p', String(pid)];
+
+  return new Promise((resolve) => {
+    let output = '';
+    let probe;
+
+    try {
+      probe = spawn(command, args, {
+        windowsHide: true,
+        shell: false,
+        stdio: ['ignore', 'pipe', 'ignore']
+      });
+    } catch {
+      resolve(0);
+      return;
+    }
+
+    probe.stdout?.on('data', (chunk) => {
+      output += String(chunk || '');
+      if (output.length > 4096) output = output.slice(-4096);
+    });
+
+    probe.on('error', () => resolve(0));
+    probe.on('close', () => {
+      if (process.platform === 'win32') {
+        const fields = output.match(/"[^"]*"/g) || [];
+        const memory = fields.length ? fields[fields.length - 1] : '';
+        const digits = memory.replace(/[^0-9]/g, '');
+        resolve(digits ? Number(digits) : 0);
+        return;
+      }
+
+      const value = Number(String(output).trim());
+      resolve(Number.isFinite(value) ? value : 0);
+    });
+  });
+}
+
 function runProcessWithInput(command, args, cwd, input, timeoutMs = 5000) {
   return new Promise((resolve) => {
     const started = Date.now();
     let stdout = '';
     let stderr = '';
     let settled = false;
+    let peakMemoryKb = 0;
+    let timeoutTimer = null;
+    let memoryTimer = null;
 
     let child;
     try {
@@ -288,15 +346,31 @@ function runProcessWithInput(command, args, cwd, input, timeoutMs = 5000) {
         stdout: '',
         stderr: error.message || String(error),
         timedOut: false,
-        runtimeMs: Date.now() - started
+        runtimeMs: Date.now() - started,
+        peakMemoryKb: 0
       });
       return;
     }
 
+    const sampleMemory = async () => {
+      if (settled || !child?.pid) return;
+      const rssKb = await readProcessRssKb(child.pid);
+      if (!settled && rssKb > peakMemoryKb) peakMemoryKb = rssKb;
+    };
+
+    void sampleMemory();
+    memoryTimer = setInterval(() => void sampleMemory(), 200);
+
     const finish = (result) => {
       if (settled) return;
       settled = true;
-      resolve({ ...result, runtimeMs: Date.now() - started });
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      if (memoryTimer) clearInterval(memoryTimer);
+      resolve({
+        ...result,
+        runtimeMs: Date.now() - started,
+        peakMemoryKb
+      });
     };
 
     const append = (current, chunk) => {
@@ -329,7 +403,7 @@ function runProcessWithInput(command, args, cwd, input, timeoutMs = 5000) {
       });
     });
 
-    const timer = setTimeout(() => {
+    timeoutTimer = setTimeout(() => {
       try {
         child.kill();
       } catch {}
@@ -340,8 +414,6 @@ function runProcessWithInput(command, args, cwd, input, timeoutMs = 5000) {
         timedOut: true
       });
     }, timeoutMs);
-
-    child.on('exit', () => clearTimeout(timer));
 
     try {
       child.stdin?.write(String(input || ''));
@@ -514,12 +586,17 @@ async function runCurrentFile(document, input, expectedOutput) {
 
   try {
     const result = await prepared.run(input, 5000);
+    const verdict = verdictFromResult(result, expectedOutput);
     return {
-      verdict: verdictFromResult(result, expectedOutput),
+      verdict,
       runtimeMs: result.runtimeMs,
+      peakMemoryKb: result.peakMemoryKb || 0,
       stdout: result.stdout,
       stderr: result.stderr,
       expected: expectedOutput || '',
+      diff: verdict === 'WRONG ANSWER'
+        ? buildOutputDiff(expectedOutput, result.stdout)
+        : null,
       language: prepared.language
     };
   } finally {
@@ -563,8 +640,12 @@ async function runMultipleCases(document, rawInputs, rawExpected) {
         expected: expected[index],
         verdict,
         runtimeMs: result.runtimeMs,
+        peakMemoryKb: result.peakMemoryKb || 0,
         stdout: result.stdout,
-        stderr: result.stderr
+        stderr: result.stderr,
+        diff: verdict === 'WRONG ANSWER'
+          ? buildOutputDiff(expected[index], result.stdout)
+          : null
       });
       if (verdict !== 'PASS') break;
     }
@@ -644,7 +725,10 @@ async function runStressTest(generatorDocument, bruteDocument, optimizedDocument
           bruteOutput: bruteResult.stdout,
           optimizedOutput: optimizedResult.stdout,
           bruteRuntimeMs: bruteResult.runtimeMs,
-          optimizedRuntimeMs: optimizedResult.runtimeMs
+          optimizedRuntimeMs: optimizedResult.runtimeMs,
+          bruteMemoryKb: bruteResult.peakMemoryKb || 0,
+          optimizedMemoryKb: optimizedResult.peakMemoryKb || 0,
+          diff: buildOutputDiff(bruteResult.stdout, optimizedResult.stdout)
         };
       }
     }
