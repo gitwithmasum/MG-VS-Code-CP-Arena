@@ -41,17 +41,42 @@ function nonce() {
 }
 
 async function requestGalaxyModel(prompt, systemInstruction) {
-  const models =
-    vscode.lm && typeof vscode.lm.selectChatModels === 'function'
-      ? await vscode.lm.selectChatModels()
-      : [];
+  if (!vscode.lm || typeof vscode.lm.selectChatModels !== 'function') {
+    return {
+      ok: false,
+      text: '',
+      model: 'No model',
+      error: 'VS Code Language Model API is unavailable in this VS Code build.'
+    };
+  }
+
+  let models = [];
+  let selectionError = '';
+
+  try {
+    // Prefer GitHub Copilot explicitly. VS Code uses the "copilot" vendor
+    // for Copilot-provided language models and may show a consent prompt
+    // because this call is triggered directly by a user action.
+    models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+
+    // Keep BYOK/custom providers usable as a fallback.
+    if (!models.length) {
+      models = await vscode.lm.selectChatModels();
+    }
+  } catch (error) {
+    selectionError =
+      error && error.message ? error.message : 'Unable to query VS Code language models.';
+  }
 
   if (!models.length) {
     return {
       ok: false,
       text: '',
       model: 'No model',
-      error: 'No VS Code language model is currently available.'
+      error:
+        selectionError ||
+        'Copilot is signed in, but this Extension Development Host did not expose a language model. ' +
+        'Open VS Code Chat once, then reload the Extension Development Host and try again.'
     };
   }
 
