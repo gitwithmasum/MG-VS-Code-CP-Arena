@@ -421,6 +421,11 @@ class CpArenaProvider {
     const rawExpected = String(value && value.expected || '').slice(0, 50000);
     const suite = await runMultipleCases(document, rawInputs, rawExpected);
 
+    // Persist the exact suite text so UI rerenders never fall back to the
+    // single-sample fields and accidentally collapse a multi-case run.
+    suite.rawInput = rawInputs;
+    suite.rawExpected = rawExpected;
+
     if (!suite.ok) {
       vscode.window.showWarningMessage(
         'Galaxy CP Multi Judge: ' + (suite.error || 'Unable to run cases.')
@@ -437,7 +442,8 @@ class CpArenaProvider {
     } else {
       vscode.window.showWarningMessage(
         'Galaxy CP: ' + suite.verdict + ' after ' +
-        suite.passed + '/' + suite.total + ' passed.'
+        suite.passed + '/' + suite.total + ' passed · detected ' +
+        suite.total + ' case' + (suite.total === 1 ? '' : 's') + '.'
       );
     }
 
@@ -899,8 +905,15 @@ class CpArenaProvider {
       escapeHtml(state.lastRun && state.lastRun.input || '') + '</textarea></div>' +
       '<div class="run-panel"><strong>Expected Output</strong><textarea id="sampleExpected" spellcheck="false" placeholder="Paste expected output here...">' +
       escapeHtml(state.lastRun && state.lastRun.expected || '') + '</textarea></div></div>' +
-      '<p class="muted">Multi-case format: separate each input case and each expected-output case with a line containing <code>---</code>.</p>' +
-      '<div class="tools"><button id="runSample">▶ Run Sample</button><button id="runMulti">≋ Run Multi Cases</button><button data-command="cpStressTest">⚡ Stress Test</button><button data-command="cpNewProblemFile">＋ New Problem File</button><button data-command="cpSnippetVault">⌘ Snippet Vault</button><button data-command="cpAiComplexity">O() Complexity</button><button data-command="cpAiEdgeCases">◇ Edge Cases</button><button data-command="cpPanicAssist">! Panic Assist</button></div>' +
+      '<div class="tools"><button id="runSample">▶ Run Sample</button><button data-command="cpStressTest">⚡ Stress Test</button><button data-command="cpNewProblemFile">＋ New Problem File</button><button data-command="cpSnippetVault">⌘ Snippet Vault</button><button data-command="cpAiComplexity">O() Complexity</button><button data-command="cpAiEdgeCases">◇ Edge Cases</button><button data-command="cpPanicAssist">! Panic Assist</button></div>' +
+      '<div class="section-title top">MULTI-CASE JUDGE</div>' +
+      '<p class="muted">Use dedicated multi-case boxes below. Separate cases with a line containing <code>---</code>.</p>' +
+      '<div class="runner">' +
+      '<div class="run-panel"><strong>Multi-case Input</strong><textarea id="multiInput" spellcheck="false" placeholder="1 2&#10;---&#10;5 7&#10;---&#10;10 20">' +
+      escapeHtml(state.lastSuite && state.lastSuite.rawInput || '') + '</textarea></div>' +
+      '<div class="run-panel"><strong>Multi-case Expected Output</strong><textarea id="multiExpected" spellcheck="false" placeholder="3&#10;---&#10;12&#10;---&#10;30">' +
+      escapeHtml(state.lastSuite && state.lastSuite.rawExpected || '') + '</textarea></div></div>' +
+      '<div class="tools"><button id="runMulti">≋ Run Multi Cases</button></div>' +
       lastRun + lastSuite + lastStress +
       '<div class="section-title top">VERDICT HISTORY</div><div class="history">' +
       renderHistory(state.history) + '</div>' +
@@ -914,7 +927,7 @@ class CpArenaProvider {
       'document.querySelectorAll("[data-status]").forEach(b=>b.addEventListener("click",()=>send("cpSetStatus",b.dataset.status)));' +
       'document.querySelectorAll("[data-platform]").forEach(b=>b.addEventListener("click",()=>send("cpPlatform",b.dataset.platform)));' +
       'document.getElementById("runSample").addEventListener("click",()=>send("cpRunSample",{input:document.getElementById("sampleInput").value,expected:document.getElementById("sampleExpected").value}));' +
-      'document.getElementById("runMulti").addEventListener("click",()=>send("cpRunMulti",{input:document.getElementById("sampleInput").value,expected:document.getElementById("sampleExpected").value}));' +
+      'document.getElementById("runMulti").addEventListener("click",()=>send("cpRunMulti",{input:document.getElementById("multiInput").value,expected:document.getElementById("multiExpected").value}));' +
       'const fmt=(ms)=>{let s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60);s%=60;return(h?[h,m,s]:[m,s]).map(v=>String(v).padStart(2,"0")).join(":")};' +
       'const contest=document.getElementById("contestClock");if(contest){const running=contest.dataset.running==="1",end=Number(contest.dataset.endAt||0),initial=Number(contest.dataset.remaining||0);if(running){setInterval(()=>{contest.textContent=fmt(end?Math.max(0,end-Date.now()):initial)},1000)}}' +
       'const problem=document.getElementById("problemClock");if(problem&&problem.dataset.running==="1"){const base=Number(problem.dataset.currentMs||0),start=Date.now();setInterval(()=>{problem.textContent=fmt(base+(Date.now()-start))},1000)}' +
